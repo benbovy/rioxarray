@@ -3,6 +3,8 @@ This module is an extension for xarray to provide rasterio capabilities
 to xarray datasets/dataarrays.
 """
 
+import importlib
+
 # pylint: disable=too-many-lines
 import json
 import math
@@ -36,6 +38,8 @@ from rioxarray.exceptions import (
 )
 
 DEFAULT_GRID_MAP = "spatial_ref"
+
+has_rasterix = bool(importlib.util.find_spec("rasterix"))
 
 
 def _affine_has_rotation(affine: Affine) -> bool:
@@ -317,6 +321,15 @@ class XRasterBase:
         self._width: Optional[int] = None
         self._crs: Union[rasterio.crs.CRS, None, Literal[False]] = None
         self._gcps: Optional[list[GroundControlPoint]] = None
+
+    @property
+    def _has_raster_index(self) -> bool:
+        if has_rasterix and self._x_dim is not None and self._y_dim is not None:
+            from rasterix import RasterIndex
+
+            return isinstance(self._obj.xindexes.get(self.x_dim, None), RasterIndex)
+        else:
+            return False
 
     @property
     def crs(self) -> Optional[rasterio.crs.CRS]:
@@ -632,6 +645,9 @@ class XRasterBase:
         1. The GeoTransform metatada property in the grid mapping
         2. The transform attribute.
         """
+        if self._has_raster_index:
+            return self.transform()
+
         try:
             # look in grid_mapping
             transform = numpy.fromstring(
@@ -675,6 +691,9 @@ class XRasterBase:
         :obj:`xarray.Dataset` | :obj:`xarray.DataArray`:
             Modified dataset with Geo Transform written.
         """
+        if self._has_raster_index and transform is not None:
+            raise ValueError("transform cannot be provided when using RasterIndex.")
+
         transform = transform or self.transform(recalc=True)
         data_obj = self._get_obj(inplace=inplace)
         # delete the old attribute to prevent confusion
@@ -708,6 +727,9 @@ class XRasterBase:
         :obj:`affine.Affine`:
             The affine of the :obj:`xarray.Dataset` | :obj:`xarray.DataArray`
         """
+        if self._has_raster_index and self._x_dim is not None:
+            return self._obj.xindexes[self.x_dim].transform
+
         transform = self._cached_transform()
         if transform and (
             not transform.is_rectilinear or _affine_has_rotation(transform)
