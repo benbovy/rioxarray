@@ -728,7 +728,7 @@ class XRasterBase:
             The affine of the :obj:`xarray.Dataset` | :obj:`xarray.DataArray`
         """
         if self._has_raster_index and self._x_dim is not None:
-            return self._obj.xindexes[self.x_dim].transform
+            return self._obj.xindexes[self.x_dim].transform()
 
         transform = self._cached_transform()
         if transform and (
