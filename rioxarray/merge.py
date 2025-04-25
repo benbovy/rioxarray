@@ -179,16 +179,20 @@ def merge_arrays(
             and "x" in coords
             and coords["x"].ndim == 1
         ):
+            if (x := coords.get("x")) is not None:
+                del coords["x"]
             coords[representative_array.rio.x_dim] = IndexVariable(
-                representative_array.rio.x_dim, coords.pop("x")
+                representative_array.rio.x_dim, x
             )
         if (
             representative_array.rio.y_dim != "y"
             and "y" in coords
             and coords["y"].ndim == 1
         ):
+            if (y := coords.get("y")) is not None:
+                del coords["y"]
             coords[representative_array.rio.y_dim] = IndexVariable(
-                representative_array.rio.y_dim, coords.pop("y")
+                representative_array.rio.y_dim, y
             )
     else:
         coords = _get_nonspatial_coords(representative_array)
